@@ -1,0 +1,11 @@
+PHONEBOT FA CONSOLE v0.8
+========================
+
+- Runtime Analyzer now identifies the exact operation active at every retry/timeout.
+- Separates retry initiator from retry target:
+  SW orchestrator, Vision/OCR, USB/device, device service, functional test, robot/Z-axis.
+- Detects explicit retry/timeout markers and labels inferred repeated actions or silent gaps separately.
+- Shows test item, attempt number, configured timeout, observed wait, trigger, runtime impact,
+  evidence file/line, and before/after context.
+- Groups repeated events by operation and reports counts and total observed wait per module.
+- Adds professional dashboard tables and TXT/JSON export for detailed runtime events.

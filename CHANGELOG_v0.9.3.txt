@@ -1,0 +1,10 @@
+PhoneBot FA Console v0.9.3 — Phone Runtime Boundary Fix
+
+FIX QUAN TRONG
+- BEGIN TRANSACTION và END TRANSACTION được xem là khung thời gian của cả batch 4 port.
+- Không còn dùng thời gian batch để kết luận runtime của từng phone.
+- Khi chọn Port 1/2/3/4, tool tính từ activity đầu tiên đến activity cuối cùng thuộc đúng port.
+- Ưu tiên marker start/end riêng của phone nếu log có.
+- Nếu không có marker riêng, tool ghi rõ đây là ước lượng first-to-last port activity.
+- Hiển thị đồng thời Runtime riêng phone và Thời gian cả batch (reference only).
+- Nếu không đủ activity riêng của port, tool trả insufficient_data thay vì gán thời gian của phone cuối cùng.

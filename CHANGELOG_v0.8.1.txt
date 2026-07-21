@@ -1,0 +1,12 @@
+PhoneBot FA Console v0.8.1 - Fixed Launcher
+
+- Giu nguyen toan bo tinh nang v0.8.
+- Sua start_ubuntu.sh de khong tu dong dong terminal khi gap loi.
+- Sua start_windows.bat de giu cua so va ghi log khi server crash.
+- Tu phat hien .venv bi hong va tao lai.
+- Kiem tra Python >= 3.9.
+- Huong dan ro khi Ubuntu thieu python3-venv/python3-pip.
+- Ghi launcher_ubuntu.log hoac launcher_windows.log.
+- Kiem tra import ung dung truoc khi mo trinh duyet.
+- Phat hien server dang chay san tren port 8000.
+- Them diagnose_ubuntu.sh va diagnose_windows.bat.

@@ -1,0 +1,9 @@
+PhoneBot FA Console v0.9.3 — Phone Runtime Boundary Fix
+
+- Sửa lỗi trộn event giữa Port 1/2/3/4 khi các port chạy song song.
+- Thêm ô chọn Port ở Runtime input.
+- Backend chỉ nhận file thuộc đúng port được chọn.
+- Nếu phát hiện nhiều port nhưng chưa chọn, API trả lỗi rõ ràng thay vì dùng transaction dài nhất.
+- Metadata ghi selected_port, detected_ports, file của port khác bị loại và file không xác định port.
+- Bảng transaction hiển thị Port đang được phân tích.
+- Đã test: Port 1 = 17 phút, Port 2 = 20 phút, kết quả tách đúng.

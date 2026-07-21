@@ -1,0 +1,11 @@
+PhoneBot FA Console v0.9.1 — Clear Diagnosis
+
+- Added a plain-language runtime conclusion at the top of the result.
+- Added chronological diagnosis sequence.
+- Ranked main slowdown contributors by observed wait and count.
+- Added "Not the main cause" section for high-count, low-wait retries.
+- Added prioritized technician checks based on the top modules.
+- Added explicit / inferred / mixed evidence labels.
+- Added safe explanation that observed waits may overlap.
+- Export TXT now includes the plain-language diagnosis.
+- Preserved JSON error diagnostics and attempt=0 protection.

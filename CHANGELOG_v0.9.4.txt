@@ -1,0 +1,7 @@
+PhoneBot FA Console v0.9.5 — Timestamp Domain Fix
+
+- Không dùng dòng timestamp cuối cùng của port folder làm mốc hoàn tất phone.
+- Thêm bộ lọc strong phone activity cho mốc kết thúc.
+- Loại shared service, heartbeat, polling và batch tail khỏi runtime riêng.
+- Boundary mới: port_active_window.
+- BEGIN/END TRANSACTION tiếp tục chỉ dùng làm batch reference.

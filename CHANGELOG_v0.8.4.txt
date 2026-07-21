@@ -1,0 +1,8 @@
+PhoneBot FA Console v0.8.4
+============================
+
+Fixes
+- Prevent RuntimeRetryTimeoutItem validation failure when a log contains a zero-based retry/attempt counter such as retry=0.
+- Preserve the original log line as evidence while leaving attempt_number unknown when the counter is not a valid 1-based attempt number.
+- Add a second validation guard before constructing the Pydantic result object.
+- Update static asset cache version to v0.8.4.

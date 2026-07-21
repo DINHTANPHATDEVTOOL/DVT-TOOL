@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PhoneBot FA Console</title>
+  <link rel="stylesheet" href="/static/styles.css?v=0.9.5.1">
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 3h8a2 2 0 0 1 2 2v3.2a5.9 5.9 0 0 1 2 4.3V17a2 2 0 0 1-2 2h-1.2a5.5 5.5 0 0 1-9.6 0H6a2 2 0 0 1-2-2v-4.5a5.9 5.9 0 0 1 2-4.3V5a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 12h.01M15 12h.01M9.5 16h5"/></svg>
+        </div>
+        <div>
+          <strong>PhoneBot FA</strong>
+          <span>Analysis Console v0.9.5</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="Điều hướng chính">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="analyze">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span>
+          Phân tích lỗi
+        </button>
+        <button class="nav-item" data-view="runtime">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2M4 4l2 2M20 4l-2 2"/></svg></span>
+          Phân tích thời gian
+          <span class="nav-count runtime-count" id="sidebarRuntimeCount">0</span>
+        </button>
+        <button class="nav-item" data-view="cases">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
+          Case database
+          <span class="nav-count" id="sidebarCaseCount">0</span>
+        </button>
+        <button class="nav-item" data-view="reports">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h8"/></svg></span>
+          Báo cáo
+        </button>
+      </nav>
+
+      <div class="nav-label">SYSTEM</div>
+      <nav class="nav-list">
+        <button class="nav-item" data-view="settings">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H10.4v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-3.2h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h3.2v.1A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v3.2h-.1A1.7 1.7 0 0 0 19.4 15Z"/></svg></span>
+          Cài đặt AI
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <span class="status-dot"></span>
+          <div><strong>Local server</strong><span id="serverStatus">Đang kiểm tra...</span></div>
+        </div>
+        <div class="database-location" title="Database SQLite">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+          <span>SQLite knowledge base</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menuButton" aria-label="Mở menu">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="global-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input id="globalSearch" type="search" placeholder="Tìm lỗi, mã EC, failure stage..." autocomplete="off">
+          <kbd>Enter</kbd>
+        </div>
+        <div class="top-actions">
+          <button class="button primary compact" id="newAnalysisButton">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Phân tích lỗi
+          </button>
+          <button class="button ghost compact" id="topExportButton" disabled>
+            <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Export
+          </button>
+          <div class="user-chip">
+            <div class="avatar">FA</div>
+            <div><strong>Failure Analysis</strong><span>Local workspace</span></div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="view active" id="view-dashboard">
+          <div class="page-heading">
+            <div><p class="eyebrow">OVERVIEW</p><h1>Failure Analysis Dashboard</h1><p>Theo dõi case, kết quả AI và mức độ tái sử dụng knowledge base.</p></div>
+            <div class="heading-actions">
+              <button class="button ghost" id="refreshDashboardButton"><svg viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5"/><path d="M18 9a7 7 0 0 0-12-2M6 15a7 7 0 0 0 12 2"/></svg>Làm mới</button>
+              <button class="button primary" data-go="analyze"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New case</button>
+            </div>
+          </div>
+
+          <div class="stat-grid">
+            <article class="stat-card accent-blue"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8"/></svg></div><div><span>Tổng số case</span><strong id="statTotal">0</strong><small>SQLite records</small></div></article>
+            <article class="stat-card accent-purple"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></div><div><span>AI phân tích mới</span><strong id="statNewAi">0</strong><small>Không có case tham khảo</small></div></article>
+            <article class="stat-card accent-amber"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19V7M10 19V4M16 19v-9M22 19H2"/></svg></div><div><span>AI + case cũ</span><strong id="statHistoryAi">0</strong><small>Knowledge-assisted</small></div></article>
+            <article class="stat-card accent-green"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></div><div><span>Database cache</span><strong id="statCache">0</strong><small id="statCacheRate">0% tổng lượt</small></div></article>
+            <article class="stat-card accent-cyan"><div class="stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div><span>Runtime analyses</span><strong id="statRuntime">0</strong><small id="statRuntimeSlow">0 case chậm</small></div></article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel table-panel">
+              <div class="panel-header">
+                <div><h2>Recent cases</h2><span id="dashboardCaseSubtitle">Case gần nhất trong database</span></div>
+                <button class="text-button" data-go="cases">Xem tất cả <span>→</span></button>
+              </div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr><th>ID</th><th>Verdict</th><th>Confidence</th><th>Reported error</th><th>Failure stage</th><th>Source</th><th>Updated</th><th></th></tr></thead>
+                  <tbody id="dashboardCasesBody"><tr><td colspan="8" class="empty-cell">Đang tải dữ liệu...</td></tr></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="panel detail-panel" id="dashboardDetailPanel">
+              <div class="detail-empty">
+                <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/></svg></div>
+                <h3>Case details</h3><p>Chọn một case trong bảng để xem kết luận, root cause và file log.</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="view-analyze">
+          <div class="page-heading">
+            <div><p class="eyebrow">NEW ANALYSIS</p><h1>Phân tích một case mới</h1><p>Upload folder log, nhập lỗi SW và để hệ thống kiểm tra database trước khi gọi AI.</p></div>
+            <div class="heading-actions"><span class="provider-pill" id="analysisProviderPill">OpenAI · gpt-5-mini</span></div>
+          </div>
+
+          <div class="analysis-layout">
+            <section class="panel analysis-main">
+              <div class="panel-header"><div><h2>Case input</h2><span>Thông tin lỗi và file evidence</span></div><span class="step-badge">STEP 1</span></div>
+              <label class="field-label" for="reportedError">Lỗi được SW báo <em>*</em></label>
+              <textarea id="reportedError" class="control textarea" placeholder="Ví dụ: Camera is not genuine. Could not test. (EC: F001)"></textarea>
+
+              <div class="upload-zone" id="dropZone">
+                <input id="folderInput" type="file" webkitdirectory directory multiple hidden>
+                <input id="filesInput" type="file" multiple hidden accept=".log,.txt,.json,.csv,.xml,.plist">
+                <div class="upload-illustration"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></div>
+                <h3>Kéo folder hoặc file log vào đây</h3>
+                <p>Hỗ trợ .log, .txt, .json, .csv, .xml và .plist</p>
+                <div class="upload-actions"><button class="button ghost" id="chooseFolderButton" type="button">Chọn folder</button><button class="button ghost" id="chooseFilesButton" type="button">Chọn file</button></div>
+              </div>
+
+              <div class="selected-files-header"><span id="selectedFilesCount">0 file được chọn</span><button class="text-button danger-text" id="clearFilesButton">Xóa danh sách</button></div>
+              <div class="file-list" id="fileList"><div class="empty-inline">Chưa có file log.</div></div>
+
+              <div class="analysis-actions">
+                <button class="button primary large" id="analyzeButton"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg>Bắt đầu phân tích</button>
+                <button class="button ghost" id="resetAnalysisButton">Reset</button>
+                <span class="analysis-status" id="analysisStatus">Sẵn sàng.</span>
+              </div>
+            </section>
+
+            <aside class="panel config-panel" id="quickConfigPanel">
+              <div class="panel-header"><div><h2>AI configuration</h2><span>Cấu hình cho lần chạy này</span></div><span class="step-badge">STEP 2</span></div>
+              <div class="form-stack">
+                <label class="field-label">Provider</label>
+                <select class="control" data-config="provider"><option value="openai">ChatGPT / OpenAI</option><option value="gemini">Google Gemini</option><option value="ollama">Ollama (Local Offline)</option></select>
+
+                <label class="field-label">API key</label>
+                <div class="password-field"><input class="control" data-config="apiKey" type="password" placeholder="Nhập API key hoặc dùng .env" autocomplete="off"><button type="button" class="icon-button key-toggle" aria-label="Hiện API key"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></div>
+                <p class="field-help">Key chỉ dùng cho request hiện tại và không lưu vào database.</p>
+
+                <label class="field-label">Model</label>
+                <input class="control model-input" data-config="model" type="text" list="modelSuggestions" placeholder="Nhập tên model">
+
+                <div class="base-url-group">
+                  <label class="field-label">Base URL <span>(optional)</span></label>
+                  <input class="control" data-config="baseUrl" type="text" placeholder="OpenAI-compatible endpoint">
+                </div>
+
+                <label class="field-label">Giới hạn prompt</label>
+                <select class="control" data-config="promptLimit"><option value="45000">45.000 ký tự · tiết kiệm</option><option value="90000">90.000 ký tự · cân bằng</option><option value="150000">150.000 ký tự · log dài</option><option value="220000">220.000 ký tự · tối đa</option></select>
+
+                <div class="switch-list">
+                  <label class="switch-row"><div><strong>Che dữ liệu nhạy cảm</strong><span>IMEI, UDID, MAC, IP</span></div><input type="checkbox" data-config="redact"><span class="switch"></span></label>
+                  <label class="switch-row"><div><strong>Tìm case tương tự</strong><span>Tham khảo knowledge base</span></div><input type="checkbox" data-config="useDatabase"><span class="switch"></span></label>
+                  <label class="switch-row"><div><strong>Dùng cache khi khớp cao</strong><span>Không gọi API nếu ≥ ngưỡng</span></div><input type="checkbox" data-config="reuseStrong"><span class="switch"></span></label>
+                </div>
+              </div>
+              <button class="button subtle full" data-go="settings">Mở cài đặt nâng cao</button>
+            </aside>
+          </div>
+
+          <section class="result-shell hidden" id="resultShell">
+            <div class="result-topline">
+              <div><p class="eyebrow">ANALYSIS RESULT</p><h2 id="resultTitle">Kết quả phân tích</h2></div>
+              <div class="heading-actions"><button class="button ghost" id="exportJsonButton">Export JSON</button><button class="button ghost" id="exportTxtButton">Export TXT</button></div>
+            </div>
+
+            <div class="result-metrics">
+              <article><span>Verdict</span><strong id="resultVerdict">-</strong></article>
+              <article><span>Confidence</span><strong id="resultConfidence">-</strong></article>
+              <article><span>Failure stage</span><strong id="resultFailureStage">-</strong></article>
+              <article><span>Nguồn kết quả</span><strong id="resultSource">-</strong></article>
+              <article><span>Provider / Model</span><strong id="resultModel">-</strong></article>
+            </div>
+
+            <!-- Quick Verdict Banner -->
+            <div class="verdict-banner hidden" id="resultVerdictBanner">
+              <div class="verdict-banner-icon" id="resultVerdictBannerIcon">⚠️</div>
+              <div class="verdict-banner-body">
+                <div class="verdict-banner-title">
+                  <span class="verdict-banner-badge" id="resultVerdictBannerBadge">DETECTION</span>
+                  <strong id="resultVerdictBannerTitle">Tiêu đề phát hiện lỗi</strong>
+                </div>
+                <p id="resultVerdictBannerDesc">Chi tiết lỗi phân tích...</p>
+                <div class="verdict-banner-evidence hidden" id="resultVerdictBannerEvidence"></div>
+              </div>
+            </div>
+
+            <div class="tab-bar" id="resultTabs">
+              <button class="tab active" data-tab="overview">Tổng quan</button>
+              <button class="tab" data-tab="timeline">Timeline</button>
+              <button class="tab" data-tab="evidence">Evidence</button>
+              <button class="tab" data-tab="rootcause">Root cause</button>
+              <button class="tab" data-tab="similar">Case tương tự</button>
+              <button class="tab" data-tab="copilot">AI Copilot 💬</button>
+              <button class="tab" data-tab="metadata">Metadata</button>
+            </div>
+
+            <div class="tab-content active" id="tab-overview">
+              <div class="two-column-result">
+                <article class="panel result-card"><h3>Executive summary</h3><p id="resultSummary"></p><div class="callout"><strong>Điểm fail</strong><p id="resultFailureExplanation"></p></div><div class="suggested-message"><span>Error wording đề xuất</span><code id="resultSuggestedMessage"></code></div></article>
+                <article class="panel result-card"><h3>Recommended checks</h3><div class="stack-list" id="resultChecks"></div><h3 class="section-gap">Missing logs / data</h3><div class="stack-list" id="resultMissing"></div></article>
+              </div>
+            </div>
+            <div class="tab-content" id="tab-timeline"><section class="panel"><div class="panel-header"><div><h3>Test timeline</h3><span>Diễn biến theo thời gian và từng stage</span></div></div><div class="table-scroll"><table class="data-table timeline-table"><thead><tr><th>Time</th><th>Stage</th><th>Status</th><th>Description</th><th>Evidence</th></tr></thead><tbody id="resultTimeline"></tbody></table></div></section></div>
+            <div class="tab-content" id="tab-evidence"><div class="two-column-result"><article class="panel result-card"><h3>Điều log chứng minh</h3><div class="stack-list" id="resultProven"></div><h3 class="section-gap">Supporting evidence</h3><div id="resultSupporting"></div></article><article class="panel result-card"><h3>Điều chưa chứng minh</h3><div class="stack-list" id="resultNotProven"></div><h3 class="section-gap">Limiting / contradicting evidence</h3><div id="resultAgainst"></div></article></div></div>
+            <div class="tab-content" id="tab-rootcause"><section class="panel result-card"><h3>Root-cause candidates</h3><div class="root-cause-grid" id="resultRootCauses"></div></section></div>
+            <div class="tab-content" id="tab-similar"><section class="panel result-card"><h3>Similar cases from database</h3><div id="resultSimilarCases"></div></section></div>
+            <div class="tab-content" id="tab-metadata"><section class="panel result-card"><h3>Technical metadata</h3><pre class="metadata-code" id="resultMetadata"></pre></section></div>
+            <div class="tab-content" id="tab-copilot">
+              <section class="panel result-card">
+                <div class="panel-header">
+                  <div>
+                    <h3>AI Copilot</h3>
+                    <span>Hỏi đáp trực tiếp với AI về log và giải pháp của case hiện tại</span>
+                  </div>
+                  <button class="button subtle small" id="clearCopilotChat" style="min-height:30px;">Xóa chat</button>
+                </div>
+                <div class="copilot-chat-container">
+                  <div class="copilot-messages" id="copilotMessages">
+                    <div class="copilot-msg system">
+                      <div class="msg-sender">Copilot</div>
+                      <div class="msg-bubble">Xin chào! Tôi đã nạp toàn bộ logs và tóm tắt của case này vào ngữ cảnh trò chuyện. Bạn có câu hỏi cụ thể nào về lỗi hoặc giải pháp không?</div>
+                    </div>
+                  </div>
+                  <div class="copilot-input-area">
+                    <input type="text" class="control" id="copilotInput" placeholder="Nhập câu hỏi... (Ví dụ: Dòng log nào chứng minh camera lỗi?)" />
+                    <button class="button primary" id="sendCopilotBtn">Gửi</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </section>
+
+
+        <section class="view" id="view-runtime">
+          <div class="page-heading">
+            <div><p class="eyebrow">RUNTIME PERFORMANCE</p><h1>Phân tích thời gian chạy</h1><p>Phân tích độc lập với PASS/FAIL. Một process được xem là chậm khi tổng thời gian chạy lớn hơn 13 phút.</p></div>
+            <div class="heading-actions"><span class="provider-pill runtime-policy-pill">SLOW &gt; 13:00</span><span class="provider-pill" id="runtimeProviderPill">Local engine</span></div>
+          </div>
+
+          <div class="runtime-rule-banner">
+            <div class="runtime-rule-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <div><strong>Runtime riêng từng phone/port</strong><p><b>BEGIN TRANSACTION → END TRANSACTION là thời gian của cả bộ 4 phone</b>, chỉ dùng để tham khảo. Tool đánh giá chậm bằng hoạt động đầu tiên → hoạt động cuối cùng của đúng port; runtime riêng <b>trên 13 phút</b> mới bị đánh dấu chậm.</p></div>
+          </div>
+
+          <div class="analysis-layout runtime-input-layout">
+            <section class="panel analysis-main">
+              <div class="panel-header"><div><h2>Runtime input</h2><span>Folder log của một hoặc nhiều transaction</span></div><span class="step-badge">RUNTIME</span></div>
+              <div class="form-grid runtime-form-grid">
+                <div class="full-span"><label class="field-label" for="runtimeProcessLabel">Tên máy / model phone / ghi chú</label><input id="runtimeProcessLabel" class="control" type="text" placeholder="Ví dụ: PB28 - iPhone 13 mini"></div>
+                <div class="full-span"><label class="field-label" for="runtimePortSelect">Port cần phân tích</label><select id="runtimePortSelect" class="control"><option value="">Chọn folder log để phát hiện Port</option></select><small class="field-help" id="runtimePortHelp">Mỗi port được tách độc lập. Tool không còn lấy transaction dài nhất của port khác.</small></div>
+                <div><label class="field-label" for="runtimeThreshold">Ngưỡng chậm (phút)</label><input id="runtimeThreshold" class="control" type="number" min="1" max="240" step="0.5" value="13"></div>
+                <div><label class="field-label" for="runtimeGapThreshold">Gap cần cảnh báo (giây)</label><input id="runtimeGapThreshold" class="control" type="number" min="5" max="3600" step="5" value="30"></div>
+              </div>
+
+              <div class="upload-zone runtime-drop" id="runtimeDropZone">
+                <input id="runtimeFolderInput" type="file" webkitdirectory directory multiple hidden>
+                <input id="runtimeFilesInput" type="file" multiple hidden accept=".log,.txt,.json,.csv,.xml,.plist">
+                <div class="upload-illustration"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></div>
+                <h3>Kéo folder log vào đây</h3>
+                <p>Tool đọc timestamp, BEGIN/END, retry, timeout, Vision/OCR, USB và trục Z</p>
+                <div class="upload-actions"><button class="button ghost" id="runtimeChooseFolderButton" type="button">Chọn folder</button><button class="button ghost" id="runtimeChooseFilesButton" type="button">Chọn file</button></div>
+              </div>
+              <div class="selected-files-header"><span id="runtimeSelectedFilesCount">0 file được chọn</span><button class="text-button danger-text" id="runtimeClearFilesButton">Xóa danh sách</button></div>
+              <div class="file-list" id="runtimeFileList"><div class="empty-inline">Chưa có file log.</div></div>
+              <div class="analysis-actions">
+                <button class="button primary large" id="runtimeAnalyzeButton"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Phân tích runtime</button>
+                <button class="button ghost" id="runtimeResetButton">Làm mới</button>
+                <span class="analysis-status" id="runtimeStatus">Sẵn sàng.</span>
+              </div>
+            </section>
+
+            <aside class="panel analysis-sidebar">
+              <div class="panel-header"><div><h2>Phương thức phân tích</h2><span>Local trước, AI là tùy chọn</span></div><span class="step-badge muted-step">CONFIG</span></div>
+              <div class="switch-list">
+                <label class="switch-row"><div><strong>Dùng AI giải thích nguyên nhân</strong><span>Tắt vẫn có kết quả deterministic miễn phí</span></div><input type="checkbox" id="runtimeUseAi"><span class="switch"></span></label>
+              </div>
+              <div id="runtimeAiConfig" class="runtime-ai-config disabled-section">
+                <label class="field-label">Provider</label><select class="control" data-config="provider"><option value="openai">ChatGPT / OpenAI</option><option value="gemini">Google Gemini</option><option value="ollama">Ollama (Local Offline)</option></select>
+                <label class="field-label">Model</label><input class="control model-input" data-config="model" type="text" list="modelSuggestions" placeholder="Nhập model">
+                <label class="field-label">API key</label><div class="password-field"><input class="control" data-config="apiKey" type="password" placeholder="Chỉ cần khi bật AI" autocomplete="off"><button type="button" class="icon-button key-toggle" aria-label="Hiện API key"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></div>
+                <div class="base-url-group"><label class="field-label">Base URL</label><input class="control" data-config="baseUrl" type="text" placeholder="OpenAI-compatible endpoint"></div>
+              </div>
+              <div class="runtime-local-note"><strong>Local Runtime Engine</strong><p>Tự tính timestamp và lưu vào SQLite. Không cần API key, không gửi log ra ngoài khi AI đang tắt.</p></div>
+            </aside>
+          </div>
+
+          <section class="result-shell hidden" id="runtimeResultShell">
+            <div class="result-topline"><div><p class="eyebrow">RUNTIME RESULT</p><h2 id="runtimeResultTitle">Kết quả phân tích thời gian</h2></div><div class="heading-actions"><button class="button ghost" id="runtimeExportJson">Export JSON</button><button class="button ghost" id="runtimeExportTxt">Export TXT</button></div></div>
+            <div class="result-metrics runtime-metrics">
+              <article><span>Trạng thái</span><strong id="runtimeClassification">-</strong></article>
+              <article><span>Runtime riêng phone</span><strong id="runtimeTotal">-</strong></article><article><span>Thời gian cả batch</span><strong id="runtimeBatchTotal">-</strong></article>
+              <article><span>Ngưỡng</span><strong id="runtimeThresholdResult">-</strong></article>
+              <article><span>Vượt ngưỡng</span><strong id="runtimeOver">-</strong></article>
+              <article><span>Confidence</span><strong id="runtimeConfidence">-</strong></article>
+            </div>
+
+            <section class="panel result-card plain-diagnosis-panel">
+              <div class="plain-diagnosis-header">
+                <div><p class="eyebrow">KẾT LUẬN DỄ HIỂU</p><h3>Process chậm ở đâu và vì sao?</h3></div>
+                <span class="plain-diagnosis-badge" id="runtimePlainConfidence">Deterministic</span>
+              </div>
+              <div class="plain-conclusion" id="runtimePlainConclusion">Chưa có dữ liệu.</div>
+              <div class="plain-diagnosis-grid">
+                <div>
+                  <h4>Diễn biến theo thứ tự</h4>
+                  <div class="diagnosis-sequence" id="runtimeDiagnosisSequence"></div>
+                </div>
+                <div>
+                  <h4>Nguyên nhân đóng góp chính</h4>
+                  <div class="plain-contributors" id="runtimeMainContributors"></div>
+                </div>
+              </div>
+              <div class="plain-bottom-grid">
+                <div class="plain-note-box warning"><h4>Không nên hiểu sai</h4><div id="runtimeNotMainContributors"></div></div>
+                <div class="plain-note-box action"><h4>Kiểm tra trước tiên</h4><div id="runtimePriorityChecks"></div></div>
+              </div>
+              <div class="certainty-note" id="runtimeCertaintyExplanation"></div>
+            </section>
+
+            <div class="runtime-summary-grid">
+              <article class="panel result-card"><h3>Kết luận runtime</h3><p id="runtimeSummary"></p><div class="callout runtime-callout"><strong>Nguyên nhân chạy lâu</strong><p id="runtimeReason"></p></div><div id="runtimeAiBadge" class="runtime-ai-badge hidden">AI interpretation enabled</div></article>
+              <article class="panel result-card"><h3>Recommended checks</h3><div class="stack-list" id="runtimeChecks"></div><h3 class="section-gap">Missing logs / data</h3><div class="stack-list" id="runtimeMissing"></div></article>
+            </div>
+
+            <!-- Interactive Visual Timeline / Gantt Chart -->
+            <section class="panel result-card section-gap" id="runtimeTimelinePanel">
+              <div class="panel-header">
+                <div>
+                  <h3>Timeline & Gap Visualizer</h3>
+                  <span>Trực quan hóa chuỗi diễn biến các Test Items và khoảng im lặng (Gaps)</span>
+                </div>
+              </div>
+              <div class="timeline-visual-container" style="padding: 20px 15px;">
+                <div id="runtimeTimelineChart" class="timeline-chart-bar" style="display: flex; height: 32px; border-radius: 8px; overflow: hidden; background: #16222f; border: 1px solid #283747; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);"></div>
+                <div id="runtimeTimelineLegend" class="timeline-legend" style="display: flex; flex-wrap: wrap; gap: 14px; margin-top: 15px; font-size: 11px; color: var(--muted);"></div>
+              </div>
+            </section>
+
+            <div class="two-column-result runtime-charts-grid">
+              <section class="panel result-card"><div class="panel-header"><div><h3>Stage breakdown</h3><span>Ước lượng theo khoảng cách giữa các event</span></div></div><div id="runtimeStages" class="runtime-stage-list"></div></section>
+              <section class="panel result-card"><div class="panel-header"><div><h3>Root-cause candidates</h3><span>Không coi suy luận là bằng chứng</span></div></div><div class="root-cause-grid" id="runtimeRootCauses"></div></section>
+            </div>
+
+            <div class="two-column-result runtime-retry-overview">
+              <section class="panel result-card"><div class="panel-header"><div><h3>Retry theo module</h3><span>Phân biệt SW retry, Vision retry, USB retry và thao tác trục Z lặp</span></div></div><div id="runtimeRetryModules" class="module-count-list"></div></section>
+              <section class="panel result-card"><div class="panel-header"><div><h3>Timeout / wait theo module</h3><span>Marker trực tiếp và khoảng chờ suy luận được ghi riêng</span></div></div><div id="runtimeTimeoutModules" class="module-count-list"></div></section>
+            </div>
+
+            <section class="panel result-card"><div class="panel-header"><div><h3>Retry / timeout grouped by operation</h3><span>Tổng hợp đúng bước đang chạy, ai khởi tạo và module nào bị lặp/chờ</span></div></div><div class="table-scroll"><table class="data-table runtime-detail-table"><thead><tr><th>Loại</th><th>Đang làm gì</th><th>Ai khởi tạo</th><th>Module đích</th><th>Test item</th><th>Số lần</th><th>Wait quan sát</th><th>Giải thích</th></tr></thead><tbody id="runtimeRetryTimeoutGroups"></tbody></table></div></section>
+
+            <section class="panel result-card"><div class="panel-header"><div><h3>Retry / timeout occurrences</h3><span>Mỗi sự kiện có timestamp, thao tác, cơ chế retry và evidence trước/sau</span></div></div><div class="table-scroll extra-tall-table"><table class="data-table runtime-detail-table"><thead><tr><th># / Time</th><th>Loại</th><th>Đang làm gì</th><th>Ai retry/chờ</th><th>Cách thực hiện</th><th>Test item</th><th>Timeout / wait</th><th>Trigger & impact</th><th>Evidence</th></tr></thead><tbody id="runtimeRetryTimeoutEvents"></tbody></table></div></section>
+
+            <section class="panel result-card"><div class="panel-header"><div><h3>Longest timestamp gaps</h3><span>Khoảng im lặng giữa hai event liên tiếp</span></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Duration</th><th>Stage nghi ngờ</th><th>Trước gap</th><th>Sau gap</th></tr></thead><tbody id="runtimeGaps"></tbody></table></div></section>
+            <section class="panel result-card"><div class="panel-header"><div><h3>Phone activity window</h3><span>Không dùng BEGIN → END của cả batch để tính runtime riêng của phone</span></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Port</th><th>Classification</th><th>Runtime</th><th>Result marker</th><th>Retry</th><th>Timeout</th><th>Boundary</th></tr></thead><tbody id="runtimeProcesses"></tbody></table></div></section>
+            <section class="panel result-card"><h3>Technical metadata</h3><pre class="metadata-code" id="runtimeMetadata"></pre></section>
+          </section>
+
+          <section class="panel runtime-history-panel">
+            <div class="panel-header"><div><h2>Runtime history</h2><span>Các lần phân tích thời gian đã lưu trong SQLite</span></div><button class="button ghost compact" id="runtimeRefreshHistory">Refresh</button></div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Process</th><th>Classification</th><th>Runtime</th><th>Over</th><th>Source</th><th>Created</th><th></th></tr></thead><tbody id="runtimeHistoryBody"><tr><td colspan="8" class="empty-cell">Chưa tải lịch sử.</td></tr></tbody></table></div>
+          </section>
+        </section>
+
+        <section class="view" id="view-cases">
+          <div class="page-heading">
+            <div><p class="eyebrow">KNOWLEDGE BASE</p><h1>Case Database</h1><p>Tìm kiếm, xem chi tiết và quản lý các kết quả phân tích đã lưu.</p></div>
+            <div class="heading-actions"><button class="button primary" data-go="analyze"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New case</button></div>
+          </div>
+          <div class="cases-grid">
+            <section class="panel table-panel">
+              <div class="panel-header cases-toolbar">
+                <div class="inline-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="caseSearch" type="search" placeholder="Tìm theo lỗi, verdict, failure stage..."></div>
+                <select class="control compact-control" id="caseLimit"><option value="30">30 case</option><option value="60">60 case</option><option value="100">100 case</option><option value="200">200 case</option></select>
+                <button class="button ghost compact" id="refreshCasesButton">Refresh</button>
+              </div>
+              <div class="table-scroll tall-table">
+                <table class="data-table"><thead><tr><th>ID</th><th>Verdict</th><th>Error</th><th>Confidence</th><th>Failure stage</th><th>Provider</th><th>Source</th><th>Created</th><th></th></tr></thead><tbody id="allCasesBody"><tr><td colspan="9" class="empty-cell">Đang tải...</td></tr></tbody></table>
+              </div>
+            </section>
+            <aside class="panel detail-panel large" id="caseDetailPanel"><div class="detail-empty"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/></svg></div><h3>Case details</h3><p>Chọn biểu tượng xem ở cuối một dòng.</p></div></aside>
+          </div>
+        </section>
+
+        <section class="view" id="view-reports">
+          <div class="page-heading"><div><p class="eyebrow">REPORT CENTER</p><h1>Báo cáo phân tích</h1><p>Xem lại báo cáo gần nhất và xuất dữ liệu cho kỹ sư hoặc khách hàng.</p></div><div class="heading-actions"><button class="button ghost" id="reportExportJson" disabled>Export JSON</button><button class="button primary" id="reportExportTxt" disabled>Export TXT</button></div></div>
+          <section class="panel report-placeholder" id="reportCenter"><div class="detail-empty"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h8"/></svg></div><h3>Chưa có báo cáo trong phiên này</h3><p>Thực hiện một lần phân tích mới hoặc mở một case trong database để xem báo cáo.</p><button class="button primary" data-go="analyze">Phân tích case mới</button></div></section>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="page-heading"><div><p class="eyebrow">SYSTEM CONFIGURATION</p><h1>Cài đặt AI & dữ liệu</h1><p>Cấu hình provider, model, API key và cách sử dụng case database.</p></div></div>
+          <div class="settings-grid">
+            <section class="panel settings-card"><div class="panel-header"><div><h2>AI Provider</h2><span>Cấu hình được đồng bộ với trang phân tích</span></div></div><div class="form-grid">
+              <div><label class="field-label">Provider</label><select class="control" data-config="provider"><option value="openai">ChatGPT / OpenAI</option><option value="gemini">Google Gemini</option><option value="ollama">Ollama (Local Offline)</option></select></div>
+              <div><label class="field-label">Model</label><input class="control model-input" data-config="model" type="text" list="modelSuggestions" placeholder="Nhập tên model"></div>
+              <div class="full-span"><label class="field-label">API key</label><div class="password-field"><input class="control" data-config="apiKey" type="password" placeholder="API key không được lưu vào SQLite" autocomplete="off"><button type="button" class="icon-button key-toggle" aria-label="Hiện API key"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></div></div>
+              <div class="full-span base-url-group"><label class="field-label">Base URL <span>(OpenAI-compatible)</span></label><input class="control" data-config="baseUrl" type="text" placeholder="Để trống khi dùng OpenAI chính thức"></div>
+              <div><label class="field-label">Prompt limit</label><select class="control" data-config="promptLimit"><option value="45000">45.000 ký tự</option><option value="90000">90.000 ký tự</option><option value="150000">150.000 ký tự</option><option value="220000">220.000 ký tự</option></select></div>
+            </div></section>
+
+            <section class="panel settings-card"><div class="panel-header"><div><h2>Database behavior</h2><span>Quy tắc tra cứu và tái sử dụng case</span></div></div><div class="switch-list settings-switches">
+              <label class="switch-row"><div><strong>Che dữ liệu nhạy cảm</strong><span>Redact trước khi gửi AI và lưu excerpt</span></div><input type="checkbox" data-config="redact"><span class="switch"></span></label>
+              <label class="switch-row"><div><strong>Tìm case tương tự trước</strong><span>Đưa tối đa 3 case cũ vào context</span></div><input type="checkbox" data-config="useDatabase"><span class="switch"></span></label>
+              <label class="switch-row"><div><strong>Tự dùng database cache</strong><span>Bỏ qua API khi case khớp rất cao</span></div><input type="checkbox" data-config="reuseStrong"><span class="switch"></span></label>
+            </div><div class="database-info"><div><span>Database path</span><code id="settingsDatabasePath">data/phonebot_cases.db</code></div><div><span>Total records</span><strong id="settingsCaseCount">0</strong></div><div><span>Latest update</span><strong id="settingsLatestCase">-</strong></div></div></section>
+          </div>
+          <div class="security-note"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><div><strong>API key security</strong><p>API key chỉ tồn tại trong bộ nhớ của tab hiện tại. Tool không ghi key vào SQLite, log, response hoặc localStorage.</p></div></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Interactive Log Viewer Modal -->
+  <div class="modal-overlay hidden" id="logViewerModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="logViewerTitle">File Log</h3>
+          <span id="logViewerSubtitle">Lựa chọn dòng log chứng minh</span>
+        </div>
+        <button class="icon-button" id="closeLogViewerButton" title="Đóng"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="modal-toolbar">
+        <div class="inline-search" style="margin-left: 0; flex: 1;">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input id="logViewerSearch" type="search" placeholder="Tìm kiếm trong log (Enter)...">
+        </div>
+        <span class="search-match-count" id="logViewerMatchCount">0 kết quả</span>
+        <button class="button ghost compact" id="logViewerPrevMatch" disabled>Trước</button>
+        <button class="button ghost compact" id="logViewerNextMatch" disabled>Sau</button>
+      </div>
+      <div class="modal-body log-viewer-body" id="logViewerContent">
+        <!-- Log lines go here -->
+      </div>
+    </div>
+  </div>
+
+  <datalist id="modelSuggestions"></datalist>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <div class="loading-overlay hidden" id="loadingOverlay"><div class="loader-card"><div class="spinner"></div><strong>Đang phân tích case</strong><span id="loadingMessage">Đang chọn evidence...</span></div></div>
+  <script src="/static/app.js?v=0.9.5.1"></script>
+</body>
+</html>

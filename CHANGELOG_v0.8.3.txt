@@ -1,0 +1,8 @@
+PhoneBot FA Console v0.8.3
+
+- Fixed: Unexpected token I / Internal Server Error is not valid JSON.
+- Added: JSON-safe fetch parser for every API request.
+- Added: global backend exception handler with error_id.
+- Added: server_error.log traceback file with API-key redaction.
+- Added: specific error handling for Runtime Analyzer and SQLite save.
+- Added: launcher check to prevent opening an older server on port 8000.

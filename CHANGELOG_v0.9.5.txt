@@ -1,0 +1,11 @@
+PhoneBot FA Console v0.9.5 — Timestamp Domain Fix
+
+Sửa lỗi runtime bị tính thành nhiều giờ khi folder port chứa debug/service log có timestamp cũ, timestamp tĩnh hoặc clock khác với trace của batch hiện tại.
+
+Thay đổi:
+- Pair BEGIN/END theo cùng file và chọn batch hoàn tất có độ tin cậy cao nhất, thay vì earliest BEGIN + latest END.
+- Khóa toàn bộ per-phone event vào cửa sổ BEGIN/END của batch hiện tại.
+- Debug Android/debug service không còn được dùng làm boundary start/end nếu có trace/log station đáng tin cậy.
+- Loại event ngoài batch trước khi tính runtime, gap, retry và timeout.
+- Sanity check: runtime riêng của phone không thể dài hơn batch.
+- Hiển thị số event ngoài batch đã loại và file thực sự dùng làm boundary.

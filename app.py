@@ -147,7 +147,7 @@ async def unhandled_exception_handler(request, exc: Exception):
 @app.middleware("http")
 async def disable_browser_cache(request, call_next):
     response = await call_next(request)
-    if request.url.path == "/" or request.url.path.startswith("/static/"):
+    if request.url.path in ("/", "/uph", "/PB_UPH_v6.html") or request.url.path.startswith("/static/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -158,6 +158,19 @@ async def disable_browser_cache(request, call_next):
 def index() -> FileResponse:
     return FileResponse(
         STATIC_DIR / "index.html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+@app.get("/uph")
+@app.get("/PB_UPH_v6.html")
+def uph_tool() -> FileResponse:
+    return FileResponse(
+        BASE_DIR / "PB_UPH_v6.html",
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",

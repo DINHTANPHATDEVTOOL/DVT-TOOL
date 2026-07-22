@@ -8,7 +8,18 @@ Hệ thống kết hợp phân tích bộ quy tắc xác định (Deterministic 
 
 ## 🚀 Các Tính Năng Vừa Nâng Cấp Nổi Bật (Mới Nhất)
 
-### 1. Phân Tích Ngữ Nghĩa Bằng Vector (Semantic Vector Search)
+### 1. Nút Chuyển Đổi Giao Diện Sáng / Tối (Light & Dark Mode Switcher)
+* **Chuyển đổi mượt mà không lag**: Thiết kế nút chuyển đổi trực quan, sang trọng tích hợp gọn gàng trong mục **Cài đặt & Giao diện** với các hiệu ứng chuyển tiếp (transitions 0.25s) êm dịu, không gây giật lag phần cứng.
+* **Tương phản văn bản hoàn hảo**: Giao diện sáng (Light Mode) được tinh chỉnh màu sắc thủ công cực kỳ cao cấp, sử dụng hệ màu tương phản chất lượng cao (`#1e293b`, `#475569`) cho các bảng biểu, nhãn nhập liệu, nhật ký log, và khung chat AI để đảm bảo dễ đọc và không mỏi mắt.
+* **Không nháy màn hình (Anti-FOUC)**: Áp dụng khối mã tự khởi chạy đồng bộ ngay khi tải trang giúp giữ nguyên trạng thái giao diện đã chọn từ `localStorage` trước khi render DOM, triệt tiêu hoàn toàn lỗi nháy giao diện khi tải lại trang (F5).
+
+### 2. Bộ Công Cụ Tính UPH Tích Hợp (PB UPH Calculator V6)
+* **Tích hợp đồng bộ trong Console**: Tách biệt luồng tính toán UPH riêng trên Sidebar ("Tính UPH") với giao diện lưới hiển thị đồng bộ cùng màu sắc của hệ thống.
+* **Tự động phân tích lịch sử giao dịch (Tx Logs)**: Chỉ cần dán nhật ký giao dịch, hệ thống tự động bóc tách thời gian bắt đầu, kết thúc, thời lượng chạy, các khoảng thời gian trống (Idle gaps) và phân loại thiết bị lỗi tự động.
+* **Xuất báo cáo Excel offline**: Hỗ trợ xuất trực tiếp bảng kết quả UPH ra file định dạng Excel (`.xlsx`) hoàn toàn bằng thư viện nén dữ liệu cục bộ phía Client, không cần gửi dữ liệu lên server.
+* **Tự động lưu trạng thái**: Mọi dữ liệu đang nhập và kết quả tính toán được tự động đồng bộ xuống trình duyệt để tiếp tục làm việc sau khi tải lại trang.
+
+### 3. Phân Tích Ngữ Nghĩa Bằng Vector (Semantic Vector Search)
 * **Offline-first Vector Engine**: Lưu trữ trực tiếp các vector nhúng (Embeddings) của logs lỗi vào SQLite mà không cần cài đặt các cơ sở dữ liệu vector cồng kềnh bên ngoài.
 * **Hỗ trợ đa Provider**: Tương thích tốt với **Ollama** (`nomic-embed-text`), **Gemini API** (`text-embedding-004`) và **OpenAI API** (`text-embedding-3-small`).
 * **Trọng số Hybrid Scoring**: Thuật toán tìm kiếm kết hợp thông minh (80% dựa trên độ tương đồng Cosine ngữ nghĩa từ AI + 20% từ các đặc trưng deterministic thực tế như trùng mã lỗi linh kiện) cho độ chính xác tìm kiếm case cũ vượt mức 95%.
@@ -16,13 +27,12 @@ Hệ thống kết hợp phân tích bộ quy tắc xác định (Deterministic 
   * Điểm số khớp hiển thị dạng Vòng tròn sắc màu động (Xanh: Khớp cao, Vàng: Khớp vừa, Đỏ: Khớp thấp).
   * Gắn nhãn phân loại lý do khớp thông minh: Màu Cyan cho khớp ngữ nghĩa AI (`semantic-badge`), Màu Tím cho trùng mã lỗi phần cứng (`code-match-badge`).
 
-### 2. Trợ Lý Trực Tuyến AI Copilot (Interactive Chatbot)
+### 4. Trợ Lý Trực Tuyến AI Copilot (Interactive Chatbot)
 * **Trò chuyện trực tiếp trên Case**: Tab **AI Copilot 💬** mới trong panel kết quả cho phép kỹ sư trò chuyện trực tiếp với AI về case lỗi đang xem.
 * **Truyền Ngữ cảnh Thông minh**: Hệ thống tự động nạp tóm tắt lỗi, kết luận, cùng với **toàn bộ dữ liệu logs trích dẫn** của case vào ngữ cảnh trò chuyện của LLM.
 * **Bộ biên dịch Markdown thời gian thực**: Định dạng câu trả lời chứa danh sách đầu dòng, mã log, hay tô đậm chữ kỹ thuật thành giao diện HTML đẹp mắt và trực quan.
-* **Đa nền tảng hỗ trợ**: Chạy tốt với cả Local Ollama (cho môi trường bảo mật dữ liệu cao) hoặc Cloud APIs.
 
-### 3. Sửa Lỗi Đồng Bộ Time Domain & Cô Lập Port
+### 5. Sửa Lỗi Đồng Bộ Time Domain & Cô Lập Port
 * **Timestamp Domain Alignment**: Tự động liên kết các mốc thời gian lệch pha giữa Android `trace.log`, Station log và OCR/Vision.
 * **Cô lập Port chính xác**: Loại bỏ log nền nhiễu (polling, heartbeat, log chờ thiết bị khác) trên trạm test 4-port, giúp hiển thị thời gian chạy thực tế (Runtime) của từng thiết bị cực kỳ chính xác.
 

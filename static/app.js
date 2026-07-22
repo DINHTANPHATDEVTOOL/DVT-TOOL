@@ -1,5 +1,13 @@
 "use strict";
 
+// Apply theme instantly on load before DOM is fully ready
+(function() {
+  const savedTheme = localStorage.getItem("phonebot_theme") || "dark";
+  if (savedTheme === "light") {
+    document.documentElement.classList.add("light-theme");
+  }
+})();
+
 const MODEL_SUGGESTIONS = {
   openai: ["gpt-5-mini", "gpt-5", "gpt-4.1-mini", "gpt-4o-mini"],
   gemini: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
@@ -182,6 +190,7 @@ function switchView(name) {
   if (name === "reports") renderReportCenter(state.lastResponse);
   if (name === "runtime") loadRuntimeHistory();
   if (name === "settings") loadStats();
+  if (name === "uph") initUphCalculator();
 }
 
 async function apiJson(url, options = {}) {
@@ -1598,7 +1607,473 @@ function bindEvents() {
   });
 }
 
+// ==========================================
+// UPH Calculator Implementation
+// ==========================================
+let uphMachineCounter = 0;
+let uphInitialized = false;
+
+function initUphCalculator() {
+  if (uphInitialized) return;
+  uphInitialized = true;
+
+  $("#uphAddMachineBtn")?.addEventListener("click", () => addUphMachine());
+  $("#uphExportBtn")?.addEventListener("click", exportUphExcel);
+  $("#uphClearBtn")?.addEventListener("click", () => {
+    if (window.confirm("Xóa toàn bộ dữ liệu máy và transaction?")) {
+      const list = $("#uphMachineList");
+      if (list) list.innerHTML = "";
+      const rows = $("#uphResultRows");
+      if (rows) rows.innerHTML = "";
+      uphMachineCounter = 0;
+      localStorage.removeItem("pb_uph_v6_excel");
+      addUphMachine();
+      toast("Đã xóa dữ liệu", "Đã xóa toàn bộ dữ liệu UPH.", "info");
+    }
+  });
+
+  if (!loadUphState()) {
+    addUphMachine();
+  }
+}
+
+function addUphMachine(data = {}) {
+  uphMachineCounter++;
+  const card = document.createElement("article");
+  card.className = "uph-machine-card";
+  card.dataset.machineId = String(uphMachineCounter);
+  card.innerHTML = `
+    <div class="uph-machine-header">
+      <strong class="uph-machine-title">${escapeHtml(data.machine || `Machine ${uphMachineCounter}`)}</strong>
+      <button class="button ghost compact danger-button uph-delete-btn" type="button">Xóa</button>
+    </div>
+    <div class="uph-machine-body">
+      <div class="uph-fields">
+        <div class="uph-field-full">
+          <label class="field-label">Machine No.</label>
+          <input class="control uph-machine-name" value="${escapeHtml(data.machine || "")}" placeholder="AIZ_TN_PB48_01">
+        </div>
+        <div>
+          <label class="field-label">Total Phone</label>
+          <input class="control uph-total-phone" type="number" min="0" step="1" value="${data.total ?? ""}">
+        </div>
+        <div>
+          <label class="field-label">Process Finished</label>
+          <input class="control uph-finished" type="number" min="0" step="1" value="${data.finished ?? ""}">
+        </div>
+        <div>
+          <label class="field-label">Device Errors</label>
+          <input class="control uph-device-errors" type="number" min="0" step="1" value="${data.deviceErrors ?? 0}">
+        </div>
+        <div>
+          <label class="field-label">Note</label>
+          <input class="control uph-note" value="${escapeHtml(data.note || "")}" placeholder="UPH Android phone">
+        </div>
+      </div>
+      <div class="uph-paste-area">
+        <label class="field-label">Dán hai cột Start Time và End Time</label>
+        <textarea class="control textarea uph-transaction-text" placeholder="22 Jul 2026 09:14:29&#9;22 Jul 2026 09:27:27&#10;22 Jul 2026 09:14:29&#9;22 Jul 2026 09:26:50">${escapeHtml(data.transactions || "")}</textarea>
+        <p class="field-help">Copy trực tiếp hai cột từ Google Sheets. Mỗi dòng là một transaction; các dòng chạy cùng lúc được tính song song.</p>
+      </div>
+      <div class="uph-auto-result">
+        <div class="uph-metric"><span>Transactions</span><strong class="uph-transaction-count">0</strong></div>
+        <div class="uph-metric"><span>Processing Time</span><strong class="uph-processing-time">0:00:00</strong></div>
+        <div class="uph-metric"><span>Processing Hours</span><strong class="uph-processing-hours">0.00</strong></div>
+        <div class="uph-metric"><span>All Gaps</span><strong class="uph-all-gaps">0:00:00</strong></div>
+        <div class="uph-metric"><span>Idle Over 60s</span><strong class="uph-idle-60">0:00:00</strong></div>
+        <div class="uph-metric highlight"><span>Processing-only UPH</span><strong class="uph-processing-uph">-</strong></div>
+        <div class="uph-metric highlight"><span>UPH with 60s Max</span><strong class="uph-uph-60">-</strong></div>
+      </div>
+      <div class="uph-machine-message"></div>
+    </div>
+  `;
+
+  card.querySelectorAll("input,textarea").forEach(el => el.addEventListener("input", () => {
+    updateUphMachine(card);
+    saveUphState();
+  }));
+
+  card.querySelector(".uph-delete-btn").addEventListener("click", () => {
+    card.remove();
+    updateAllUphResults();
+    saveUphState();
+  });
+
+  const list = $("#uphMachineList");
+  if (list) {
+    list.appendChild(card);
+    updateUphMachine(card);
+  }
+}
+
+function getUphMachineInput(card) {
+  return {
+    machine: card.querySelector(".uph-machine-name").value.trim(),
+    total: Number(card.querySelector(".uph-total-phone").value || 0),
+    finished: Number(card.querySelector(".uph-finished").value || 0),
+    deviceErrors: Number(card.querySelector(".uph-device-errors").value || 0),
+    note: card.querySelector(".uph-note").value.trim(),
+    transactions: card.querySelector(".uph-transaction-text").value
+  };
+}
+
+function setUphMachineMessage(card, text = "", type = "") {
+  const box = card.querySelector(".uph-machine-message");
+  if (box) {
+    box.textContent = text;
+    box.className = type ? `uph-machine-message ${type}` : "uph-machine-message";
+  }
+}
+
+function updateUphMachine(card) {
+  const input = getUphMachineInput(card);
+  card.querySelector(".uph-machine-title").textContent = input.machine || `Machine ${card.dataset.machineId}`;
+  try {
+    if ([input.total, input.finished, input.deviceErrors].some(v => !Number.isFinite(v) || v < 0 || !Number.isInteger(v))) {
+      throw new Error("Total Phone, Process Finished và Device Errors phải là số nguyên không âm.");
+    }
+    if (input.finished > input.total) {
+      throw new Error("Process Finished không được lớn hơn Total Phone.");
+    }
+    if (input.finished + input.deviceErrors > input.total && input.total > 0) {
+      throw new Error("Process Finished + Device Errors không được lớn hơn Total Phone.");
+    }
+    const c = uphAnalyseTransactions(input.transactions);
+    const counted = input.finished + input.deviceErrors;
+    const denom1 = c.processingOnlyHours;
+    const denom2 = c.effective60Hours;
+    const uph1 = denom1 > 0 ? counted / denom1 : NaN;
+    const uph2 = denom2 > 0 ? counted / denom2 : NaN;
+    
+    Object.assign(card.dataset, {
+      valid: "true",
+      processingSeconds: String(c.processing),
+      allGapsSeconds: String(c.allGaps),
+      idle60Seconds: String(c.idle60),
+      processingHours: String(c.processingHours),
+      allGapsHours: String(c.allGapsHours),
+      idle60Hours: String(c.idle60Hours),
+      processingOnlyHours: String(denom1),
+      effective60Hours: String(denom2),
+      countedDevices: String(counted)
+    });
+
+    card.querySelector(".uph-transaction-count").textContent = c.count;
+    card.querySelector(".uph-processing-time").textContent = uphFormatDuration(c.processing);
+    card.querySelector(".uph-processing-hours").textContent = c.processingHours.toFixed(2);
+    card.querySelector(".uph-all-gaps").textContent = `${uphFormatDuration(c.allGaps)} (${c.allGapsHours.toFixed(2)}h)`;
+    card.querySelector(".uph-idle-60").textContent = `${uphFormatDuration(c.idle60)} (${c.idle60Hours.toFixed(2)}h)`;
+    card.querySelector(".uph-processing-uph").textContent = uphFormatNumber(uph1, 1);
+    card.querySelector(".uph-uph-60").textContent = uphFormatNumber(uph2, 1);
+    
+    if (c.count > 0) {
+      setUphMachineMessage(card, `Đã tính theo ${c.count} dòng Start–End và quy tắc làm tròn 2 chữ số giờ.`, "success");
+    } else {
+      setUphMachineMessage(card);
+    }
+  } catch (e) {
+    Object.assign(card.dataset, {
+      valid: "false",
+      processingOnlyHours: "0",
+      effective60Hours: "0",
+      countedDevices: "0"
+    });
+    for (const s of [".uph-transaction-count", ".uph-processing-time", ".uph-processing-hours", ".uph-all-gaps", ".uph-idle-60"]) {
+      card.querySelector(s).textContent = s === ".uph-transaction-count" ? "0" : s === ".uph-processing-hours" ? "0.00" : "0:00:00";
+    }
+    card.querySelector(".uph-processing-uph").textContent = "-";
+    card.querySelector(".uph-uph-60").textContent = "-";
+    setUphMachineMessage(card, e.message, "error");
+  }
+  updateAllUphResults();
+}
+
+function collectUphReportRows() {
+  const rows = [];
+  const list = $("#uphMachineList");
+  if (!list) return rows;
+  for (const card of list.querySelectorAll(".uph-machine-card")) {
+    if (card.dataset.valid !== "true") continue;
+    const i = getUphMachineInput(card);
+    const has = i.machine || i.total || i.finished || i.deviceErrors || i.transactions.trim() || i.note;
+    if (!has) continue;
+    const counted = i.finished + i.deviceErrors;
+    const ph = Number(card.dataset.processingHours || 0);
+    const gh = Number(card.dataset.allGapsHours || 0);
+    const ih = Number(card.dataset.idle60Hours || 0);
+    const d1 = ph - gh;
+    const d2 = ph - ih;
+    rows.push({
+      ...i,
+      counted,
+      processingSeconds: Number(card.dataset.processingSeconds || 0),
+      allGapsSeconds: Number(card.dataset.allGapsSeconds || 0),
+      idle60Seconds: Number(card.dataset.idle60Seconds || 0),
+      processingHours: ph,
+      allGapsHours: gh,
+      idle60Hours: ih,
+      processingOnlyHours: d1,
+      effective60Hours: d2,
+      productionPct: i.total > 0 ? i.finished / i.total : 0,
+      processingUPH: d1 > 0 ? counted / d1 : NaN,
+      uph60: d2 > 0 ? counted / d2 : NaN
+    });
+  }
+  return rows;
+}
+
+function updateAllUphResults() {
+  const rowsBody = $("#uphResultRows");
+  if (!rowsBody) return;
+  rowsBody.innerHTML = "";
+  const rows = collectUphReportRows();
+  let total = 0, finished = 0, counted = 0, den1 = 0, den2 = 0;
+  for (const r of rows) {
+    total += r.total;
+    finished += r.finished;
+    counted += r.counted;
+    if (r.processingOnlyHours > 0) den1 += r.processingOnlyHours;
+    if (r.effective60Hours > 0) den2 += r.effective60Hours;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(r.machine || "-")}</td>
+      <td>${r.total}</td>
+      <td>${r.finished}</td>
+      <td style="color: var(--green); font-weight: 700;">${uphFormatNumber(r.productionPct * 100, 1)}%</td>
+      <td style="color: var(--cyan); font-weight: 800;">${uphFormatNumber(r.processingUPH, 1)}</td>
+      <td style="color: var(--cyan); font-weight: 800;">${uphFormatNumber(r.uph60, 1)}</td>
+      <td>${escapeHtml(r.note)}</td>
+    `;
+    rowsBody.appendChild(tr);
+  }
+  if (rows.length) {
+    const tr = document.createElement("tr");
+    tr.className = "summary-row";
+    tr.style.fontWeight = "bold";
+    tr.style.background = "var(--panel-2)";
+    tr.style.borderTop = "2px dashed var(--line)";
+    tr.innerHTML = `
+      <td>All Machines</td>
+      <td>${total}</td>
+      <td>${finished}</td>
+      <td style="color: var(--green); font-weight: 700;">${uphFormatNumber(total > 0 ? finished / total * 100 : 0, 1)}%</td>
+      <td style="color: var(--cyan); font-weight: 800;">${uphFormatNumber(den1 > 0 ? counted / den1 : NaN, 1)}</td>
+      <td style="color: var(--cyan); font-weight: 800;">${uphFormatNumber(den2 > 0 ? counted / den2 : NaN, 1)}</td>
+      <td></td>
+    `;
+    rowsBody.appendChild(tr);
+  }
+}
+
+function saveUphState() {
+  const list = $("#uphMachineList");
+  if (!list) return;
+  const data = [...list.querySelectorAll(".uph-machine-card")].map(c => {
+    const i = getUphMachineInput(c);
+    return {
+      machine: i.machine,
+      total: c.querySelector(".uph-total-phone").value,
+      finished: c.querySelector(".uph-finished").value,
+      deviceErrors: c.querySelector(".uph-device-errors").value,
+      note: i.note,
+      transactions: i.transactions
+    };
+  });
+  localStorage.setItem("pb_uph_v6_excel", JSON.stringify(data));
+}
+
+function loadUphState() {
+  const raw = localStorage.getItem("pb_uph_v6_excel");
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data) || !data.length) return false;
+    const list = $("#uphMachineList");
+    if (list) list.innerHTML = "";
+    data.forEach(item => addUphMachine(item));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ZIP and Excel Binary Generator Helpers
+function uphRound2(v){return Math.round((v+Number.EPSILON)*100)/100}
+function uphFormatNumber(v,d=1){if(!Number.isFinite(v))return "-";return new Intl.NumberFormat("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v)}
+function uphFormatDuration(seconds){if(!Number.isFinite(seconds)||seconds<0)return"0:00:00";const t=Math.round(seconds),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
+function uphParseDateTime(text){
+  const value=text.trim().replace(/\s+/g," ");
+  let m=value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){
+    const[,y,mo,d,h,mi,s="0"]=m;
+    return new Date(+y,+mo-1,+d,+h,+mi,+s);
+  }
+  m=value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){
+    const[,d,mo,y,h,mi,s="0"]=m;
+    return new Date(+y,+mo-1,+d,+h,+mi,+s);
+  }
+  m=value.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){
+    const map={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+    const[,d,mt,y,h,mi,s="0"]=m,mo=map[mt.toLowerCase()];
+    if(mo!==undefined)return new Date(+y,mo,+d,+h,+mi,+s);
+  }
+  const p=new Date(value);
+  return Number.isNaN(p.getTime())?null:p;
+}
+function uphSplitTransactionLine(line){
+  for(const sep of["\t","|",";"]){
+    const p=line.split(sep);
+    if(p.length>=2)return[p[0].trim(),p.slice(1).join(sep).trim()];
+  }
+  const p=line.trim().split(/\s{2,}/);
+  return p.length>=2?[p[0].trim(),p.slice(1).join(" ").trim()]:null;
+}
+function uphAnalyseTransactions(text){
+  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length)return{count:0,processing:0,allGaps:0,idle60:0,processingHours:0,allGapsHours:0,idle60Hours:0,processingOnlyHours:0,effective60Hours:0};
+  const tx=lines.map((line,i)=>{
+    const parts=uphSplitTransactionLine(line);
+    if(!parts)throw new Error(`Dòng ${i+1}: không tách được Start và End.`);
+    const start=uphParseDateTime(parts[0]),end=uphParseDateTime(parts[1]);
+    if(!start||!end)throw new Error(`Dòng ${i+1}: timestamp không hợp lệ.`);
+    if(end<=start)throw new Error(`Dòng ${i+1}: End phải sau Start.`);
+    return{start,end};
+  }).sort((a,b)=>(a.start-b.start)||(b.end-a.end));
+  const first=tx[0].start;
+  let latest=tx[0].end,allGaps=0,idle60=0;
+  for(let i=1;i<tx.length;i++){
+    const t=tx[i];
+    if(t.start>latest){
+      const gap=(t.start-latest)/1000;
+      allGaps+=gap;
+      idle60+=Math.max(0,gap-60);
+    }
+    if(t.end>latest)latest=t.end;
+  }
+  const processing=(latest-first)/1000;
+  const processingHours=uphRound2(processing/3600);
+  const allGapsHours=uphRound2(allGaps/3600);
+  const idle60Hours=uphRound2(idle60/3600);
+  return{
+    count:tx.length,
+    processing,
+    allGaps,
+    idle60,
+    processingHours,
+    allGapsHours,
+    idle60Hours,
+    processingOnlyHours:uphRound2(processingHours-allGapsHours),
+    effective60Hours:uphRound2(processingHours-idle60Hours)
+  };
+}
+
+function uphXmlEscape(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&apos;")}
+function uphColName(n){let s="";while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26)}return s}
+function uphTextCell(ref,value,style=0){return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${uphXmlEscape(value)}</t></is></c>`}
+function uphNumCell(ref,value,style=0,formula=""){const v=Number.isFinite(value)?value:0;return `<c r="${ref}" s="${style}">${formula?`<f>${uphXmlEscape(formula)}</f>`:""}<v>${v}</v></c>`}
+function uphCrc32(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0)}return(c^0xffffffff)>>>0}
+function uphU16(v){return new Uint8Array([v&255,(v>>>8)&255])}
+function uphU32(v){return new Uint8Array([v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255])}
+function uphConcatArrays(arrays){const len=arrays.reduce((s,a)=>s+a.length,0),out=new Uint8Array(len);let o=0;for(const a of arrays){out.set(a,o);o+=a.length}return out}
+function uphZipStore(files){
+  const enc=new TextEncoder(),locals=[],centrals=[];let offset=0;
+  const now=new Date(),dosTime=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1),dosDate=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  for(const file of files){
+    const name=enc.encode(file.name),data=typeof file.data==="string"?enc.encode(file.data):file.data,crc=uphCrc32(data);
+    const local=uphConcatArrays([uphU32(0x04034b50),uphU16(20),uphU16(0),uphU16(0),uphU16(dosTime),uphU16(dosDate),uphU32(crc),uphU32(data.length),uphU32(data.length),uphU16(name.length),uphU16(0),name,data]);
+    locals.push(local);
+    const central=uphConcatArrays([uphU32(0x02014b50),uphU16(20),uphU16(20),uphU16(0),uphU16(0),uphU16(dosTime),uphU16(dosDate),uphU32(crc),uphU32(data.length),uphU32(data.length),uphU16(name.length),uphU16(0),uphU16(0),uphU16(0),uphU16(0),uphU32(0),uphU32(offset),name]);
+    centrals.push(central);
+    offset+=local.length;
+  }
+  const centralData=uphConcatArrays(centrals),end=uphConcatArrays([uphU32(0x06054b50),uphU16(0),uphU16(0),uphU16(files.length),uphU16(files.length),uphU32(centralData.length),uphU32(offset),uphU16(0)]);
+  return uphConcatArrays([...locals,centralData,end]);
+}
+
+function uphBuildExcelWorkbook(rows){
+  const startRow=5,endRow=startRow+rows.length-1,summaryRow=endRow+1,generated=new Date().toLocaleString("vi-VN");
+  let sheetRows=[];
+  sheetRows.push(`<row r="1" ht="30" customHeight="1">${uphTextCell("A1","PB UPH REPORT",1)}</row>`);
+  sheetRows.push(`<row r="2" ht="22" customHeight="1">${uphTextCell("A2",`Generated: ${generated} | Intermediate hours rounded to 2 decimals before UPH calculation`,2)}</row>`);
+  sheetRows.push(`<row r="4" ht="34" customHeight="1">${["Machine No.","Total phone","Process finished","Production Pct. (%)","Processing-only UPH","UPH with 60s Max","Note"].map((h,i)=>uphTextCell(`${uphColName(i+1)}4`,h,3)).join("")}</row>`);
+  rows.forEach((r,idx)=>{
+    const rr=startRow+idx,alt=idx%2===0,base=alt?5:4;
+    sheetRows.push(`<row r="${rr}" ht="23" customHeight="1">${uphTextCell(`A${rr}`,r.machine||"-",base)}${uphNumCell(`B${rr}`,r.total,base)}${uphNumCell(`C${rr}`,r.finished,base)}${uphNumCell(`D${rr}`,r.productionPct,6,`IFERROR(C${rr}/B${rr},0)`)}${uphNumCell(`E${rr}`,r.processingUPH,7,`IFERROR((C${rr}+H${rr})/(I${rr}-J${rr}),0)`)}${uphNumCell(`F${rr}`,r.uph60,7,`IFERROR((C${rr}+H${rr})/(I${rr}-K${rr}),0)`)}${uphTextCell(`G${rr}`,r.note||"",alt?9:8)}${uphNumCell(`H${rr}`,r.deviceErrors,0)}${uphNumCell(`I${rr}`,r.processingHours,0)}${uphNumCell(`J${rr}`,r.allGapsHours,0)}${uphNumCell(`K${rr}`,r.idle60Hours,0)}${uphTextCell(`L${rr}`,uphFormatDuration(r.processingSeconds),0)}${uphTextCell(`M${rr}`,uphFormatDuration(r.allGapsSeconds),0)}${uphTextCell(`N${rr}`,uphFormatDuration(r.idle60Seconds),0)}</row>`);
+  });
+  const total=rows.reduce((s,r)=>s+r.total,0),finished=rows.reduce((s,r)=>s+r.finished,0),errors=rows.reduce((s,r)=>s+r.deviceErrors,0),sumP=rows.reduce((s,r)=>s+r.processingHours,0),sumG=rows.reduce((s,r)=>s+r.allGapsHours,0),sumI=rows.reduce((s,r)=>s+r.idle60Hours,0),sumD1=sumP-sumG,sumD2=sumP-sumI,prod=total?finished/total:0,uph1=sumD1>0?(finished+errors)/sumD1:0,uph2=sumD2>0?(finished+errors)/sumD2:0;
+  sheetRows.push(`<row r="${summaryRow}" ht="25" customHeight="1">${uphTextCell(`A${summaryRow}`,"All Machines",10)}${uphNumCell(`B${summaryRow}`,total,10,`SUM(B${startRow}:B${endRow})`)}${uphNumCell(`C${summaryRow}`,finished,10,`SUM(C${startRow}:C${endRow})`)}${uphNumCell(`D${summaryRow}`,prod,11,`IFERROR(C${summaryRow}/B${summaryRow},0)`)}${uphNumCell(`E${summaryRow}`,uph1,12,`IFERROR((C${summaryRow}+H${summaryRow})/(I${summaryRow}-J${summaryRow}),0)`)}${uphNumCell(`F${summaryRow}`,uph2,12,`IFERROR((C${summaryRow}+H${summaryRow})/(I${summaryRow}-K${summaryRow}),0)`)}${uphTextCell(`G${summaryRow}`,"",10)}${uphNumCell(`H${summaryRow}`,errors,10,`SUM(H${startRow}:H${endRow})`)}${uphNumCell(`I${summaryRow}`,sumP,10,`SUM(I${startRow}:I${endRow})`)}${uphNumCell(`J${summaryRow}`,sumG,10,`SUM(J${startRow}:J${endRow})`)}${uphNumCell(`K${summaryRow}`,sumI,10,`SUM(K${startRow}:K${endRow})`)}</row>`);
+  const noteRow=summaryRow+2;
+  sheetRows.push(`<row r="${noteRow}" ht="36" customHeight="1">${uphTextCell(`A${noteRow}`,"Calculation note: Processing Time, All Gaps and Idle Over 60s are converted to hours and rounded to 2 decimals before subtraction. UPH is displayed with 1 decimal.",13)}</row>`);
+  const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:N${noteRow}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols><col min="1" max="1" width="24" customWidth="1"/><col min="2" max="3" width="15" customWidth="1"/><col min="4" max="4" width="19" customWidth="1"/><col min="5" max="6" width="21" customWidth="1"/><col min="7" max="7" width="28" customWidth="1"/><col min="8" max="14" hidden="1" width="12" customWidth="1"/></cols><sheetData>${sheetRows.join("")}</sheetData><autoFilter ref="A4:G${summaryRow}"/><mergeCells count="3"><mergeCell ref="A1:G1"/><mergeCell ref="A2:G2"/><mergeCell ref="A${noteRow}:G${noteRow}"/></mergeCells><pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="0.0%"/><numFmt numFmtId="165" formatCode="0.0"/></numFmts><fonts count="5"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="20"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF07343D"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><i/><sz val="10"/><color rgb="FF7A2E0E"/><name val="Calibri"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF075D75"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD8FBFC"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF16D8DF"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF2F4F7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF8D99A9"/></left><right style="thin"><color rgb="FF8D99A9"/></right><top style="thin"><color rgb="FF8D99A9"/></top><bottom style="thin"><color rgb="FF8D99A9"/></bottom><diagonal/></border><border><left style="thin"><color rgb="FF606B78"/></left><right style="thin"><color rgb="FF606B78"/></right><top style="medium"><color rgb="FF606B78"/></top><bottom style="thin"><color rgb="FF606B78"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="14"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="4" borderId="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="5" borderId="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="164" fontId="3" fillId="5" borderId="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="165" fontId="3" fillId="5" borderId="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="5" borderId="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="3" fillId="6" borderId="2" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="164" fontId="3" fillId="6" borderId="2" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="165" fontId="3" fillId="6" borderId="2" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="4" fillId="0" borderId="0" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files=[
+    {name:"[Content_Types].xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`},
+    {name:"_rels/.rels",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`},
+    {name:"docProps/app.xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>PB UPH Calculator</Application></Properties>`},
+    {name:"docProps/core.xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>PB UPH Report</dc:title><dc:creator>PB UPH Calculator</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`},
+    {name:"xl/workbook.xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="UPH Report" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>`},
+    {name:"xl/_rels/workbook.xml.rels",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:"xl/styles.xml",data:styles},
+    {name:"xl/worksheets/sheet1.xml",data:sheetXml}
+  ];
+  return new Blob([uphZipStore(files)],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+function exportUphExcel(){
+  const rows=collectUphReportRows();
+  if(!rows.length){
+    toast("Chưa có dữ liệu", "Chưa có Machine hợp lệ để xuất báo cáo.", "error");
+    return;
+  }
+  const invalid=[...document.querySelectorAll("#uphMachineList .uph-machine-card")].some(c=>c.dataset.valid==="false");
+  if(invalid){
+    toast("Lỗi dữ liệu", "Có Machine đang lỗi dữ liệu. Hãy sửa trước khi xuất.", "error");
+    return;
+  }
+  const blob=uphBuildExcelWorkbook(rows),url=URL.createObjectURL(blob),a=document.createElement("a"),d=new Date(),stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+  a.href=url;
+  a.download=`PB_UPH_Report_${stamp}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast("Xuất thành công", "Đã xuất báo cáo Excel.", "success");
+}
+
+// ==========================================
+// Theme (Dark/Light) Switcher Implementation
+// ==========================================
+function initTheme() {
+  const savedTheme = localStorage.getItem("phonebot_theme") || "dark";
+  applyTheme(savedTheme);
+
+  $("#themeBtnDark")?.addEventListener("click", () => {
+    applyTheme("dark");
+    localStorage.setItem("phonebot_theme", "dark");
+  });
+
+  $("#themeBtnLight")?.addEventListener("click", () => {
+    applyTheme("light");
+    localStorage.setItem("phonebot_theme", "light");
+  });
+}
+
+function applyTheme(theme) {
+  if (theme === "light") {
+    document.documentElement.classList.add("light-theme");
+    $("#themeBtnLight")?.classList.add("active");
+    $("#themeBtnDark")?.classList.remove("active");
+  } else {
+    document.documentElement.classList.remove("light-theme");
+    $("#themeBtnDark")?.classList.add("active");
+    $("#themeBtnLight")?.classList.remove("active");
+  }
+}
+
 async function init() {
+  initTheme();
   bindEvents();
   syncConfigControls();
   renderFiles();

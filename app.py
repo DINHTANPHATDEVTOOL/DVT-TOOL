@@ -814,6 +814,20 @@ async def copilot_chat_endpoint(req: CopilotRequest):
         raise HTTPException(502, f"AI Copilot failed: {safe_message}") from exc
 
 
+@app.post("/api/shutdown")
+async def shutdown_server():
+    import os
+    import signal
+    import asyncio
+
+    async def kill_later():
+        await asyncio.sleep(0.5)
+        os.kill(os.getpid(), signal.SIGINT)
+
+    asyncio.create_task(kill_later())
+    return {"status": "ok", "message": "Server is shutting down..."}
+
+
 if __name__ == "__main__":
     import uvicorn
 

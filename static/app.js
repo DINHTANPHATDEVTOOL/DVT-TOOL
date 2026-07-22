@@ -2072,8 +2072,50 @@ function applyTheme(theme) {
   }
 }
 
+function initShutdown() {
+  $("#shutdownBtn")?.addEventListener("click", async () => {
+    if (!confirm("Bạn có chắc chắn muốn dừng và thoát ứng dụng?")) {
+      return;
+    }
+
+    const isLight = document.documentElement.classList.contains("light-theme");
+    const bg = isLight ? "#f8fafc" : "#0f172a";
+    const fg = isLight ? "#0f172a" : "#f8fafc";
+    const subFg = isLight ? "#475569" : "#94a3b8";
+
+    document.body.innerHTML = `
+      <div style="
+        position: fixed;
+        inset: 0;
+        background: ${bg};
+        color: ${fg};
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+        z-index: 99999;
+        transition: background-color 0.25s, color 0.25s;
+      ">
+        <svg style="width: 64px; height: 64px; color: #ef4444; margin-bottom: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+        </svg>
+        <h2 style="margin: 0 0 10px; font-weight: 600;">Ứng dụng đang dừng...</h2>
+        <p style="margin: 0; color: ${subFg}; font-size: 14px;">Bạn có thể đóng tab trình duyệt này an toàn.</p>
+      </div>
+    `;
+
+    try {
+      await fetch("/api/shutdown", { method: "POST" });
+    } catch (e) {
+      console.log("Server shutdown initiated.", e);
+    }
+  });
+}
+
 async function init() {
   initTheme();
+  initShutdown();
   bindEvents();
   syncConfigControls();
   renderFiles();
